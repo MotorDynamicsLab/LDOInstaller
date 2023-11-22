@@ -9,6 +9,7 @@ INTERACTIVE=True
 ASK_TO_REBOOT=0
 RCLOCAL=/etc/rc.local
 CONFIG=/boot/firmware/config.txt
+CMDLINE=/boot/firmware/cmdline.txt
 
 USER=${SUDO_USER:-$(who -m | awk '{ print $1 }')}
 if [ -z "$USER" ] && [ -n "$HOME" ]; then
@@ -17,11 +18,6 @@ fi
 if [ -z "$USER" ] || [ "$USER" = "root" ]; then
   USER=$(getent passwd | awk -F: '$3 == "1000" {print $1}')
 fi
-
-if [ -e /proc/device-tree/chosen/os_prefix ]; then
-  PREFIX="$(cat /proc/device-tree/chosen/os_prefix)"
-fi
-CMDLINE="/boot${FIRMWARE}/${PREFIX}cmdline.txt"
 
 INIT="$(ps --no-headers -o comm 1)"
 
@@ -67,14 +63,25 @@ do_boot_splash() {
   if [ $(get_boot_splash) -eq 0 ]; then
     DEFAULT=
   fi
-
+  local mplayer="false"
   if whiptail --yesno "Would you like to show the splash screen at boot?" $DEFAULT 20 60 2 ; then
     RET=$?
   else
     RET=$?
   fi
+  ### check system for installed mplayer
+  if dpkg -s mplayer 2>/dev/null | grep -q "Status: install ok installed"; then
+    mplayer="true"
+    else
+    mplayer="false"
+  fi
 
   if [ $RET -eq 0 ]; then
+
+    if [ ${mplayer} == "false" ]; then
+      sudo apt-get install mplayer -y
+      ok_msg "mplayer installed!"
+    fi
     if ! grep -q "splash" $CMDLINE ; then
       sudo sed -i $CMDLINE -e "s/$/ consoleblank=1 logo.nologo quiet loglevel=0 plymouth.enable=0 vt.global_cursor_default=0 plymouth.ignore-serial-consoles splash fastboot noatime nodiratime noram/"
     fi
@@ -93,6 +100,10 @@ do_boot_splash() {
     fi
     STATUS=enabled
   elif [ $RET -eq 1 ]; then
+    if [ ${mplayer} == "true" ]; then
+      sudo apt-get remove mplayer -y
+      ok_msg "mplayer removed!"
+    fi
     if grep -q "splash" $CMDLINE ; then
       sudo sed -i $CMDLINE -e "s/ consoleblank=1//"
       sudo sed -i $CMDLINE -e "s/ quiet//"
@@ -123,6 +134,11 @@ do_boot_splash() {
   else
     return $RET
   fi
+  sudo rm /boot/cmdline.txt
+  sudo rm /boot/config.txt
+  sudo ln -s /boot/firmware/cmdline.txt /boot/cmdline.txt
+  sudo ln -s /boot/firmware/config.txt /boot/config.txt
+
     whiptail --msgbox "Splash screen at boot is $STATUS" 20 60 1
 }
 
