@@ -3,7 +3,7 @@
 #=======================================================================#
 # Copyright (C) 2023 - 2023 LDO Motors                                  #
 #                                                                       #
-# This file is part of LDO Setup                                        #
+# This file is part of LDO Installer                                        #
 # https://github.com/MotorDynamicsLab/LDOInstaller.git                  # 
 #                                                                       #
 # Which calls scripts from through symlinks                             #
@@ -17,7 +17,7 @@ set -e
 
 function ldoinstaller_ui() {
   top_border
-  echo -e "|    ${yellow}~~~~~~~~~~~~~ [ LDO Setup Menu ] ~~~~~~~~~~~~~${white}     |"
+  echo -e "|    ${yellow}~~~~~~~~~~~ [ LDO Installer Menu ] ~~~~~~~~~~~${white}     |"
   hr
   echo -e "|                  Configure Klipper                    |"
   echo -e "|-------------------------------------------------------|"
@@ -26,9 +26,10 @@ function ldoinstaller_ui() {
   echo -e "|  2) [Voron 2.4]                                       |"
   echo -e "|  3) [Voron Trident]                                   |"
   echo -e "|  4) [Voron Switchwire]                                |"
+  echo -e "|  5) [Positron]                                        |"
   echo -e "|                                                       |"
-  echo -e "|  5) [Rotate Screen (BTT/Waveshare)]                   |"
-  echo -e "|  6) [Splash Screen]                                   |"
+  echo -e "|  6) [Rotate Screen (BTT/Waveshare)]                   |"
+  echo -e "|  7) [Splash Screen]                                   |"
   quit_footer
 }
 
@@ -75,10 +76,14 @@ function ldo_menu() {
       4)
         do_action "ldosw_ui";;
       5)
+        select_msg "Rev A"
+        ldoinstaller "PV3" "A0" "00" 0 0 0
+        ldo_menu;;
+      6)
         clear && print_header
         rotatescreen
         ldoinstaller_ui;;
-      6)
+      7)
         clear && print_header
         do_boot_splash
         ldoinstaller_ui;;
@@ -253,11 +258,9 @@ function ldovsw_ui() {
 function download_ldo_configs() {
   local ms_cfg_repo path configs regex line gcode_dir
 
-  ms_cfg_repo="https://github.com/camerony/ldoinstaller.git"
-
   status_msg "Cloning ldoinstaller ..."
   [[ -d "${HOME}/ldoinstaller" ]] && rm -rf "${HOME}/ldoinstaller"
-  if git clone --recurse-submodules "${ms_cfg_repo}" "${HOME}/ldoinstaller"; then
+  if git clone --recurse-submodules "${LDOINSTALLER_REPO}" "${HOME}/ldoinstaller"; then
     ok_msg "Done!"
   else
     print_error "Cloning failed! Aborting installation ..."
@@ -283,27 +286,22 @@ function select_printer_cfg() {
   bottom_border
   echo -e "${cyan}###### List of available printer.cfg:${white}"
 
+declare -a args=(
+    --title "Sizes"
+    --menu "Choose a size:" 25 78 12 --
+)
+
   ### list all mcus
   for config in "${configs[@]}"; do
     i=$(( i + 1 ))
     echo -e "${i}) PATH: ${cyan}${config}${white}"
+    args+=("$i" "$config")
   done
 
-  ### verify user input
-  local regex="^[1-9]+$"
-  while [[ ! ${sel_index} =~ ${regex} ]] || [[ ${sel_index} -gt ${i} ]]; do
-    echo
-    read -p "${cyan}###### Select printer.cfg to configure:${white} " sel_index
+choice=$(whiptail "${args[@]}" 3>&1 1>&2 2>&3)
+echo "You chose $choice"
+    selected_printer_cfg="${configs[${cfg_ichoice}]}"
 
-    if [[ ! ${sel_index} =~ ${regex} ]]; then
-      error_msg "Invalid input!"
-    elif [[ ${sel_index} -lt 1 ]] || [[ ${sel_index} -gt ${i} ]]; then
-      error_msg "Please select a number between 1 and ${i}!"
-    fi
-
-    local cfg_index=$(( sel_index - 1 ))
-    selected_printer_cfg="${configs[${cfg_index}]}"
-  done
 
 }
 
@@ -340,7 +338,7 @@ function ldoinstaller() {
               return
             fi
           fi
-        if ! sudo cp "${HOME}/ldoinstaller/configs/${configfilename}" "${selected_printer_cfg}"; then
+        if ! sudo cp "${HOME}/LDOInstaller/configs/${configfilename}" "${selected_printer_cfg}"; then
           error_msg "Creating ${path}/printer.cfg failed! Aborting installation ..."
           return
         else
@@ -353,6 +351,12 @@ function ldoinstaller() {
             select_mcu_connection
             select_mcu_id_ldo "Umbilical"
             sudo sed -i "s|#{serial_mcu_umb}#|$selected_mcu_id|gi" "${selected_printer_cfg}"
+          fi
+
+          if grep -Eq "#{serial_mcu_pth}#" "${selected_printer_cfg}"; then
+            select_mcu_connection
+            select_mcu_id_ldo "Toolhead"
+            sudo sed -i "s|#{serial_mcu_pth}#|$selected_mcu_id|gi" "${selected_printer_cfg}"
           fi
 
           status_msg "Setting up ${selected_printer_cfg}..."
