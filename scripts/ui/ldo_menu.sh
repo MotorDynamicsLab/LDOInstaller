@@ -298,11 +298,8 @@ declare -a args=(
     args+=("$i" "$config")
   done
 
-choice=$(whiptail "${args[@]}" 3>&1 1>&2 2>&3)
-echo "You chose $choice"
-    selected_printer_cfg="${configs[${cfg_ichoice}]}"
-
-
+  sel_index=$(whiptail "${args[@]}" 3>&1 1>&2 2>&3)-1
+  selected_printer_cfg="${configs[${sel_index}]}"
 }
 
 function ldoinstaller() {
@@ -326,9 +323,8 @@ function ldoinstaller() {
       Y|y|Yes|yes|"")
         select_msg "Yes"
 
-        select_mcu_connection
-        select_mcu_id_ldo "Mainboard"
-        print_detected_mcu_to_screen
+        #select_mcu_connection
+        select_mcu "Mainboard"
         status_msg "Configuring ${selected_printer_cfg} ..."
           if [[ -e "${selected_printer_cfg}" && ! -h "${selected_printer_cfg}" ]]; then
             warn_msg "Attention! Existing printer.cfg detected!"
@@ -348,14 +344,14 @@ function ldoinstaller() {
           sudo sed -i "s|#{serial_mcu}#|$selected_mcu_id|gi" "${selected_printer_cfg}"
 
           if grep -Eq "#{serial_mcu_umb}#" "${selected_printer_cfg}"; then
-            select_mcu_connection
-            select_mcu_id_ldo "Umbilical"
+            select_mcu  "Umbilical"
+            status_msg "Setting MCU ${selected_mcu_id} in ${selected_printer_cfg}..."
             sudo sed -i "s|#{serial_mcu_umb}#|$selected_mcu_id|gi" "${selected_printer_cfg}"
           fi
 
           if grep -Eq "#{serial_mcu_pth}#" "${selected_printer_cfg}"; then
-            select_mcu_connection
-            select_mcu_id_ldo "Toolhead"
+            select_mcu  "Toolhead"
+            status_msg "Setting MCU ${selected_mcu_id} in ${selected_printer_cfg}..."
             sudo sed -i "s|#{serial_mcu_pth}#|$selected_mcu_id|gi" "${selected_printer_cfg}"
           fi
 
@@ -375,6 +371,21 @@ function ldoinstaller() {
           sed -i "s|#{max_xy_a50}#|$(($max_xy+50))|gi" "${selected_printer_cfg}"
           sed -i "s|#{max_xy_s55}#|$(($max_xy-55))|gi" "${selected_printer_cfg}"
           sed -i "s|#{max_xy_s30}#|$(($max_xy-30))|gi" "${selected_printer_cfg}"
+
+          # if ! grep -Eq "^\[include mainsail.cfg\]$" "${path}/printer.cfg"; then
+          #   log_info "${path}/printer.cfg"
+          #   sed -i $CONFIG -e "/^\[mcu\]/i [include mainsail.cfg]" "${path}/printer.cfg"
+          # fi
+          if ! grep -Eq "^\[include fluidd.cfg\]$" "${path}/printer.cfg"; then
+            log_info "${path}/printer.cfg"
+            sed -i -e "/^\[mcu\]/i[include fluidd.cfg]" "${path}/printer.cfg"
+          fi
+
+          gcode_dir=${path/config/gcodes}
+          if ! grep -Eq "^\[virtual_sdcard\]$" "${path}/printer.cfg"; then
+            log_info "${path}/printer.cfg"
+            sed -i -e "/^\[mcu\]/i[virtual_sdcard]\npath: ${gcode_dir}\non_error_gcode: CANCEL_PRINT\n" "${path}/printer.cfg"
+          fi
 
           read -p "LDO Setup Complete. Press [Enter] to continue..."
         fi

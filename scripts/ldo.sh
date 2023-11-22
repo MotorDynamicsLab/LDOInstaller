@@ -16,8 +16,6 @@ fi
 CONFIG=/boot${FIRMWARE}/config.txt
 CMDLINE=/boot${FIRMWARE}/cmdline.txt
 
-
-
 USER=${SUDO_USER:-$(who -m | awk '{ print $1 }')}
 if [ -z "$USER" ] && [ -n "$HOME" ]; then
   USER=$(getent passwd | awk -F: "\$6 == \"$HOME\" {print \$1}")
@@ -47,6 +45,8 @@ calc_wt_size() {
   fi
   WT_MENU_HEIGHT=$((WT_HEIGHT - 7))
 }
+
+
 
 get_boot_splash() {
   if grep -q "splash" $CMDLINE ; then
@@ -173,4 +173,62 @@ function rotatescreen() {
     return $RET
   fi
     whiptail --msgbox "Screen rotation is $STATUS" 20 60 1
+}
+
+
+function get_mcus() {
+  unset mcu_list
+  unset mcu_index
+  sleep 1
+
+  mcus=$(lsusb | grep "DFU" | cut -d " " -f 6 2>/dev/null)
+
+  for mcu in ${mcus}; do
+    mcu_list+=("${mcu}")
+  done
+
+  mcus=$(find /dev/serial/by-id/* 2>/dev/null)
+  for mcu in ${mcus}; do
+    mcu_list+=("${mcu}")
+  done
+
+  mcus=$(find /dev/serial/by-path/* 2>/dev/null)
+  for mcu in ${mcus}; do
+    mcu_list+=("${mcu}")
+  done
+
+  mcus=$(find /dev -maxdepth 1 -regextype posix-extended -regex "^\/dev\/tty(AMA0|S0)$" 2>/dev/null)
+
+  for mcu in ${mcus}; do
+    mcu_list+=("${mcu}")
+    echo "${mcu}"
+  done
+  
+}
+
+function select_mcu() {
+  unset selected_mcu_id
+  local i=0
+  local mcu_type=$1
+  declare -a args=(
+    --title "Possible MCUs"
+    --menu "Select ${mcu_type} MCU:" 25 78 12 --
+)
+
+  get_mcus || true
+
+  for mcu in "${mcu_list[@]}"; do
+    i=$(( i + 1 ))
+    args+=("$i" "$mcu")
+  done
+
+  mcu_index=$(whiptail "${args[@]}" 3>&1 1>&2 2>&3)-1
+
+  if [ ${#mcu_list[@]} -eq 0 ]; then
+    whiptail --msgbox "No MCU found!" 20 60 1
+    return 1
+  fi
+
+  selected_mcu_id="${mcu_list[${mcu_index}]}"
+
 }
