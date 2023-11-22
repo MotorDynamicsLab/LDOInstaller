@@ -7,9 +7,16 @@ set -e
 
 INTERACTIVE=True
 ASK_TO_REBOOT=0
-RCLOCAL=/etc/rc.local
-CONFIG=/boot/firmware/config.txt
-CMDLINE=/boot/firmware/cmdline.txt
+
+if [ -e /boot/firmware/config.txt ] ; then
+  FIRMWARE=/firmware
+else
+  FIRMWARE=
+fi
+CONFIG=/boot${FIRMWARE}/config.txt
+CMDLINE=/boot${FIRMWARE}/cmdline.txt
+
+
 
 USER=${SUDO_USER:-$(who -m | awk '{ print $1 }')}
 if [ -z "$USER" ] && [ -n "$HOME" ]; then
@@ -89,10 +96,6 @@ do_boot_splash() {
     if ! grep -q "disable_splash=1" $CONFIG ; then
       sudo sed -i $CONFIG -e "/^\[all\]/a disable_splash=1"
     fi
-    if ! grep -q "ldospin" $RCLOCAL ; then
-      sudo sed -i $RCLOCAL -e "/^exit 0/i dmesg --console-off"
-      sudo sed -i $RCLOCAL -e "/^exit 0/i /usr/bin/mplayer -vf scale=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldospin.mp4 &> /dev/null"
-    fi
     if [ $(get_splash_service) -eq 1 ]; then
       sudo cp $HOMEDIR/LDOInstaller/splash/splash.service /etc/systemd/system/splash.service
       sudo sed -i /etc/systemd/system/splash.service -e "/^\[Service\]/a ExecStart=/usr/bin/mplayer -vf scale=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldo.mp4 &> /dev/null"
@@ -122,10 +125,6 @@ do_boot_splash() {
     if grep -q "disable_splash=1" $CONFIG ; then
       sudo sed -i $CONFIG -z -e "s/disable_splash=1\n//"
     fi
-    if grep -q "ldospin" $RCLOCAL ; then
-      sudo sed -i $RCLOCAL -z -e "s/dmesg --console-off\n//"
-      sudo sed -i $RCLOCAL -z -e "s|/usr/bin/mplayer -vf scale=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldospin.mp4 &> /dev/null\n||"
-    fi
     if [ $(get_splash_service) -eq 0 ]; then
       sudo systemctl disable splash.service 
       sudo rm /etc/systemd/system/splash.service
@@ -134,10 +133,13 @@ do_boot_splash() {
   else
     return $RET
   fi
-  sudo rm /boot/cmdline.txt
-  sudo rm /boot/config.txt
-  sudo ln -s /boot/firmware/cmdline.txt /boot/cmdline.txt
-  sudo ln -s /boot/firmware/config.txt /boot/config.txt
+
+  if [ -e /boot/firmware/config.txt ] ; then
+    sudo rm /boot/cmdline.txt
+    sudo rm /boot/config.txt
+    sudo ln -s /boot/firmware/cmdline.txt /boot/cmdline.txt
+    sudo ln -s /boot/firmware/config.txt /boot/config.txt
+  fi
 
     whiptail --msgbox "Splash screen at boot is $STATUS" 20 60 1
 }
