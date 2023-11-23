@@ -30,7 +30,7 @@ HOMEDIR="$(getent passwd "$USER" | cut -d: -f6)"
 
 FBRES="$(cat /sys/class/graphics/fb0/virtual_size | sed -r 's/,/:/')" # get current framebuffer resolution
 
-calc_wt_size() {
+function calc_wt_size() {
   # NOTE: it's tempting to redirect stderr to /dev/null, so supress error
   # output from tput. However in this case, tput detects neither stdout or
   # stderr is a tty and so only gives default 80, 24 values
@@ -48,7 +48,7 @@ calc_wt_size() {
 
 
 
-get_boot_splash() {
+function get_boot_splash() {
   if grep -q "splash" $CMDLINE ; then
     echo 0
   else
@@ -57,7 +57,7 @@ get_boot_splash() {
 }
 
 
-get_splash_service() {
+function get_splash_service() {
   if systemctl status splash.service  | grep -q -w loaded; then
     echo 0
   else
@@ -65,7 +65,7 @@ get_splash_service() {
   fi
 }
 
-do_boot_splash() {
+function do_boot_splash() {
   DEFAULT=--defaultno
   if [ $(get_boot_splash) -eq 0 ]; then
     DEFAULT=
@@ -144,6 +144,63 @@ do_boot_splash() {
     whiptail --msgbox "Splash screen at boot is $STATUS" 20 60 1
 }
 
+function install_35dpi_lcd() {
+  DEFAULT=--defaultyes
+    if whiptail --yesno "Would you like to install the 3.5 DPI LCD screen?" $DEFAULT 20 60 2 ; then
+    RET=$?
+  else
+    RET=$?
+  fi
+
+  if [ $RET -eq 0 ]; then
+    sudo cp $HOMEDIR/LDOInstaller/configs/ldo_35dpi_3b4b.dtbo /boot/overlays/ldo_35dpi_3b4b.dtbo
+    sudo cp $HOMEDIR/LDOInstaller/configs/ldo_35dpi_3b.dtbo /boot/overlays/ldo_35dpi_3b.dtbo
+    sudo cp $HOMEDIR/LDOInstaller/configs/ldo_35dpi_4b.dtbo /boot/overlays/ldo_35dpi_4b.dtbo
+    if ! grep -q "dtoverlay=ldo_35dpi_4b.dtbo" $CONFIG ; then
+      sudo sed -i $CONFIG -e "/^\[all\]/a gpio=0-9=a2"
+      sudo sed -i $CONFIG -e "/^\[all\]/a gpio=12-17=a2"
+      sudo sed -i $CONFIG -e "/^\[all\]/a gpio=20-25=a2"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=dpi18"
+      sudo sed -i $CONFIG -e "/^\[all\]/a enable_dpi_lcd=1"
+      sudo sed -i $CONFIG -e "/^\[all\]/a display_default_lcd=1"
+      sudo sed -i $CONFIG -e "/^\[all\]/a extra_transpose_buffer=2"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dpi_group=2"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dpi_mode=87"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dpi_output_format=0x6f006"
+      sudo sed -i $CONFIG -e "/^\[all\]/a hdmi_timings=640 0 20 10 10 480 0 10 5 5 0 0 0 60 0 60000000 1"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=ldo_35dpi_3b4b.dtbo"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=ldo_35dpi_3b.dtbo"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=ldo_35dpi_4b.dtbo"
+    fi
+    if ! grep -q "display_lcd_rotate=2" $CONFIG ; then
+      sudo sed -i $CONFIG -e "/^\[all\]/a display_lcd_rotate=2"
+    fi
+    STATUS=installed
+  elif [ $RET -eq 1 ]; then 
+    if grep -q "dtoverlay=ldo_35dpi_4b.dtbo" $CONFIG ; then
+      sudo sed -i $CONFIG -z -e "s/gpio=0-9=a2\n//"
+      sudo sed -i $CONFIG -z -e "s/gpio=12-17=a2\n//"
+      sudo sed -i $CONFIG -z -e "s/gpio=20-25=a2\n//"
+      sudo sed -i $CONFIG -z -e "s/dtoverlay=dpi18\n//"
+      sudo sed -i $CONFIG -z -e "s/enable_dpi_lcd=1\n//"
+      sudo sed -i $CONFIG -z -e "s/display_default_lcd=1\n//"
+      sudo sed -i $CONFIG -z -e "s/extra_transpose_buffer=2\n//"
+      sudo sed -i $CONFIG -z -e "s/dpi_group=2\n//"
+      sudo sed -i $CONFIG -z -e "s/dpi_mode=87\n//"
+      sudo sed -i $CONFIG -z -e "s/dpi_output_format=0x6f006\n//"
+      sudo sed -i $CONFIG -z -e "s/hdmi_timings=640 0 20 10 10 480 0 10 5 5 0 0 0 60 0 60000000 1\n//"
+      sudo sed -i $CONFIG -z -e "s/dtoverlay=ldo_35dpi_3b4b.dtbo\n//"
+      sudo sed -i $CONFIG -z -e "s/dtoverlay=ldo_35dpi_3b.dtbo\n//"
+      sudo sed -i $CONFIG -z -e "s/dtoverlay=ldo_35dpi_4b.dtbo\n//"
+      sudo sed -i $CONFIG -z -e "s/display_lcd_rotate=2\n//"
+    fi  
+    STATUS=uninstalled
+  else
+    return $RET
+  fi
+    whiptail --msgbox "3.5 DPI LCD screen is $STATUS" 20 60 1
+
+}
 
 function rotatescreen() {
 
@@ -208,7 +265,7 @@ function get_mcus() {
 
 function select_mcu() {
   unset selected_mcu_id
-  local i=0
+  local i=0 sel_index=0
   local mcu_type=$1
   declare -a args=(
     --title "Possible MCUs"
@@ -222,13 +279,36 @@ function select_mcu() {
     args+=("$i" "$mcu")
   done
 
-  mcu_index=$(whiptail "${args[@]}" 3>&1 1>&2 2>&3)-1
+  sel_index=$(whiptail "${args[@]}" 3>&1 1>&2 2>&3)-1
 
   if [ ${#mcu_list[@]} -eq 0 ]; then
     whiptail --msgbox "No MCU found!" 20 60 1
     return 1
   fi
 
-  selected_mcu_id="${mcu_list[${mcu_index}]}"
+  selected_mcu_id="${mcu_list[${sel_index}]}"
 
+}
+
+function select_printer_cfg() {
+  local i=0 sel_index=0
+
+  if (( ${#configs[@]} < 1 )); then
+    print_error "No configs found!\n MCU either not connected or not detected!"
+    return
+  fi
+
+declare -a args=(
+    --title "Sizes"
+    --menu "Choose a size:" 25 78 12 --
+)
+
+  for config in "${configs[@]}"; do
+    i=$(( i + 1 ))
+    echo -e "${i}) PATH: ${cyan}${config}${white}"
+    args+=("$i" "$config")
+  done
+
+  sel_index=$(whiptail "${args[@]}" 3>&1 1>&2 2>&3)-1
+  selected_printer_cfg="${configs[${sel_index}]}"
 }

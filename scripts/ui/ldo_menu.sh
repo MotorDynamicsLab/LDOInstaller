@@ -77,6 +77,7 @@ function ldo_menu() {
         do_action "ldosw_ui";;
       5)
         select_msg "Rev A"
+        install_35dpi_lcd
         ldoinstaller "PV3" "A0" "00" 0 0 0
         ldo_menu;;
       6)
@@ -269,38 +270,6 @@ function download_ldo_configs() {
   fi
 }
 
-function select_printer_cfg() {
-  local i=0 sel_index=0
-
-  if (( ${#configs[@]} < 1 )); then
-    print_error "No configs found!\n MCU either not connected or not detected!"
-    return
-  fi
-
-  top_border
-  echo -e "|                   ${red}!!! ATTENTION !!!${white}                   |"
-  hr
-  echo -e "| Make sure, to select the correct printer.cfg to setup! |"
-  hr
-  echo -e "|                   ${red}!!! ATTENTION !!!${white}                   |"
-  bottom_border
-  echo -e "${cyan}###### List of available printer.cfg:${white}"
-
-declare -a args=(
-    --title "Sizes"
-    --menu "Choose a size:" 25 78 12 --
-)
-
-  ### list all mcus
-  for config in "${configs[@]}"; do
-    i=$(( i + 1 ))
-    echo -e "${i}) PATH: ${cyan}${config}${white}"
-    args+=("$i" "$config")
-  done
-
-  sel_index=$(whiptail "${args[@]}" 3>&1 1>&2 2>&3)-1
-  selected_printer_cfg="${configs[${sel_index}]}"
-}
 
 function ldoinstaller() {
   local printer=$1 rev=$2 ver=$3
@@ -314,14 +283,6 @@ function ldoinstaller() {
   fi
   select_printer_cfg
   echo -e "\n${configfilename}\n"
-  ### confirm selection
-  local yn
-  while true; do
-    echo -e "\n###### You selected:\n ● PATH ${selected_printer_cfg}\n"
-    read -p "${cyan}###### Continue? (Y/n):${white} " yn
-    case "${yn}" in
-      Y|y|Yes|yes|"")
-        select_msg "Yes"
 
         #select_mcu_connection
         select_mcu "Mainboard"
@@ -389,14 +350,6 @@ function ldoinstaller() {
 
           read -p "LDO Setup Complete. Press [Enter] to continue..."
         fi
-        break;;
-      N|n|No|no)
-        select_msg "No"
-        break;;
-      *)
-        error_msg "Invalid command!";;
-    esac
-  done
 }
 
 function select_mcu_id_ldo() {
