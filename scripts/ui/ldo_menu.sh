@@ -3,7 +3,7 @@
 #=======================================================================#
 # Copyright (C) 2023 - 2023 LDO Motors                                  #
 #                                                                       #
-# This file is part of LDO Installer                                        #
+# This file is part of LDO Installer                                    #
 # https://github.com/MotorDynamicsLab/LDOInstaller.git                  # 
 #                                                                       #
 # Which calls scripts from through symlinks                             #
@@ -14,10 +14,22 @@
 #=======================================================================#
 
 set -e
+unset -f print_header
+
+
+
+function print_header() {
+  top_border
+  echo -e "|     $(title_msg "~~~~~~~~~~~~~ [ LDO Installer ] ~~~~~~~~~~~~~")     |"
+  echo -e "|     $(title_msg "   Printer Installation and Configuration    ")     |"
+  echo -e "|     $(title_msg "                        Thank You - KIAUH    ")     |"
+  echo -e "|     $(title_msg "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")     |"
+  bottom_border
+}
 
 function ldoinstaller_ui() {
   top_border
-  echo -e "|    ${yellow}~~~~~~~~~~~ [ LDO Installer Menu ] ~~~~~~~~~~~${white}     |"
+  echo -e "|    ${yellow}~~~~~~~~~~~~~~ [ LDO Main Menu ] ~~~~~~~~~~~~~${white}     |"
   hr
   echo -e "|                  Configure Klipper                    |"
   echo -e "|-------------------------------------------------------|"
@@ -76,17 +88,14 @@ function ldo_menu() {
       4)
         do_action "ldosw_ui";;
       5)
-        select_msg "Rev A"
-        install_35dpi_lcd
-        ldoinstaller "PV3" "A0" "00" 0 0 0
-        ldo_menu;;
+        do_action "ldopv_ui";;
       6)
         clear && print_header
-        rotatescreen
+        do_43rotatescreen
         ldoinstaller_ui;;
       7)
         clear && print_header
-        do_boot_splash
+        ldosplash_ui
         ldoinstaller_ui;;
       Q|q)
         echo -e "${green}###### Happy printing! ######${white}"; echo
@@ -256,6 +265,181 @@ function ldovsw_ui() {
   back_footer
 }
 
+function ldopv_ui() {
+  top_border
+  echo -e "|  ${yellow}~~~~~~~~~~~~~~ [ LDO Positron Menu ] ~~~~~~~~~~~~~~${white}   |"
+  hr
+  echo -e "|                  Configure Klipper                    |"
+  echo -e "|-------------------------------------------------------|"
+  echo -e "|  3.5 Display Driver:                                  |"
+  echo -e "|  1) [Install]                                         |"
+  echo -e "|  2) [Remmove]                                         |"
+  echo -e "|                                                       |"
+  echo -e "|  Configure Klipper:                                   |"
+  echo -e "|  2) [Rev A]                                           |"
+  echo -e "|                                                       |"
+  back_footer
+  local action
+  while true; do
+    read -p "${cyan}###### Perform action:${white} " action
+    case "${action}" in
+      1)
+        select_msg "Install 3.5 Display Driver"
+        do_35dpi_lcd 1
+        ldo_menu;;
+      2)
+        select_msg "Remove 3.5 Display Driver"
+        do_35dpi_lcd 2
+        ldo_menu;;
+      3)
+        select_msg "Rev C 250mm"
+        ldoinstaller "PV3" "A0" "00" 0 0 0
+        ldo_menu;;
+      B|b)
+        clear; ldo_menu; break;;
+      *)
+        error_msg "Invalid command!";;
+    esac
+  done
+
+}
+
+function ldosplash_ui() {
+  top_border
+  echo -e "|  ${yellow}~~~~~~~~~~~~~~~~~~ [ LDO Menu ] ~~~~~~~~~~~~~~~~~~${white}   |"
+  hr
+  echo -e "|                  LDO Splash Screen                    |"
+  echo -e "|-------------------------------------------------------|"
+  echo -e "|                                                       |"
+  echo -e "|  1) [Install]                                         |"
+  echo -e "|  2) [Remove]                                          |"
+  echo -e "|                                                       |"
+  back_footer
+
+  local action
+  while true; do
+    read -p "${cyan}###### Perform action:${white} " action
+    case "${action}" in
+      1)
+        select_msg "Install Splash Screen"
+        do_boot_splash 1
+        ldo_menu;;
+      2)
+        select_msg "Remove Splash Screen"
+        do_boot_splash 2
+        ldo_menu;;
+      B|b)
+        clear; ldo_menu; break;;
+      *)
+        error_msg "Invalid command!";;
+    esac
+  done
+}
+
+
+function 43rotatescreen_ui() {
+  top_border
+  echo -e "|  ${yellow}~~~~~~~~~~~~~~~~~~ [ LDO Menu ] ~~~~~~~~~~~~~~~~~~${white}   |"
+  hr
+  echo -e "|                  Rotate 4.3 Screen                    |"
+  echo -e "|-------------------------------------------------------|"
+  echo -e "|                                                       |"
+  echo -e "|  1) [Enable]                                          |"
+  echo -e "|  2) [Disable]                                         |"
+  echo -e "|                                                       |"
+  back_footer
+
+  local action
+  while true; do
+    read -p "${cyan}###### Perform action:${white} " action
+    case "${action}" in
+      1)
+        select_msg "Install Splash Screen"
+        do_43rotatescreen 1
+        ldo_menu;;
+      2)
+        select_msg "Remove Splash Screen"
+        do_43rotatescreen 2
+        ldo_menu;;
+      B|b)
+        clear; ldo_menu; break;;
+      *)
+        error_msg "Invalid command!";;
+    esac
+  done
+}
+
+function ldoprintercfg_ui() {
+  local i str
+  top_border
+  echo -e "|  ${yellow}~~~~~~~~~~~~~~~~~~ [ LDO Menu ] ~~~~~~~~~~~~~~~~~~${white}   |"
+  hr
+  echo -e "|                  LDO Printer Config                   |"
+  echo -e "|-------------------------------------------------------|"
+  echo -e "|                                                       |"
+  for config in "${configs[@]}"; do
+    i=$(( i + 1 ))
+    str="|  ${i}) ${config}                                                       "
+    echo -e "${str:0:56}|"
+    args+=("$i" "$config")
+  done
+  echo -e "|                                                       |"
+  back_footer
+
+  local action
+  while true; do
+    read -p "${cyan}###### Perform action:${white} " action
+    if [[ ${action} -gt 0 ]] && [[ ${action} -le ${#configs[@]} ]]; then
+      selected_printer_cfg="${configs[${action}-1]}"
+      break
+    fi
+    case "${action}" in
+      B|b)
+        clear; ldo_menu; break;;
+      *)
+        error_msg "Invalid command!";;
+    esac
+  done
+}
+
+function ldoprintermcu_ui() {
+  local i str mcu_type=$1
+  top_border
+  echo -e "|  ${yellow}~~~~~~~~~~~~~~~~~~ [ LDO Menu ] ~~~~~~~~~~~~~~~~~~${white}   |"
+  hr
+  str="|                  LDO ${mcu_type}                                           "
+  echo -e "${str:0:56}|"
+  echo -e "|-------------------------------------------------------|"
+  echo -e "|                                                       |"
+
+  get_mcus || true
+
+  for mcu in "${mcu_list[@]}"; do
+    i=$(( i + 1 ))
+    str="|  ${i}) ${mcu}                                                       "
+    echo -e "${str:0:56}|"
+    args+=("$i" "$mcu")
+  done
+  echo -e "|                                                       |"
+  back_footer
+
+  local action
+  while true; do
+    read -p "${cyan}###### Perform action:${white} " action
+    if [[ ${action} -gt 0 ]] && [[ ${action} -le ${#mcu_list[@]} ]]; then
+        selected_mcu_id="${mcu_list[${action}-1]}"
+      break
+    fi
+    case "${action}" in
+      B|b)
+        clear; ldo_menu; break;;
+      *)
+        error_msg "Invalid command!";;
+    esac
+  done
+}
+
+
 function download_ldo_configs() {
   local ms_cfg_repo path configs regex line gcode_dir
 
@@ -270,7 +454,6 @@ function download_ldo_configs() {
   fi
 }
 
-
 function ldoinstaller() {
   local printer=$1 rev=$2 ver=$3
   local max_x=$4 max_y=$5 max_z=$6
@@ -281,11 +464,10 @@ function ldoinstaller() {
   else
     max_xy=$max_x,$max_y
   fi
-  select_printer_cfg
+  ldoprintercfg_ui
   echo -e "\n${configfilename}\n"
 
-        #select_mcu_connection
-        select_mcu "Mainboard"
+        ldoprintermcu_ui "Mainboard"
         status_msg "Configuring ${selected_printer_cfg} ..."
           if [[ -e "${selected_printer_cfg}" && ! -h "${selected_printer_cfg}" ]]; then
             warn_msg "Attention! Existing printer.cfg detected!"
@@ -305,13 +487,13 @@ function ldoinstaller() {
           sudo sed -i "s|#{serial_mcu}#|$selected_mcu_id|gi" "${selected_printer_cfg}"
 
           if grep -Eq "#{serial_mcu_umb}#" "${selected_printer_cfg}"; then
-            select_mcu  "Umbilical"
+            ldoprintermcu_ui  "Umbilical"
             status_msg "Setting MCU ${selected_mcu_id} in ${selected_printer_cfg}..."
             sudo sed -i "s|#{serial_mcu_umb}#|$selected_mcu_id|gi" "${selected_printer_cfg}"
           fi
 
           if grep -Eq "#{serial_mcu_pth}#" "${selected_printer_cfg}"; then
-            select_mcu  "Toolhead"
+            ldoprintermcu_ui  "Toolhead"
             status_msg "Setting MCU ${selected_mcu_id} in ${selected_printer_cfg}..."
             sudo sed -i "s|#{serial_mcu_pth}#|$selected_mcu_id|gi" "${selected_printer_cfg}"
           fi
@@ -350,61 +532,6 @@ function ldoinstaller() {
 
           read -p "LDO Setup Complete. Press [Enter] to continue..."
         fi
-}
-
-function select_mcu_id_ldo() {
-  local i=0 sel_index=0 mcu_type=$1
-
-  if (( ${#mcu_list[@]} < 1 )); then
-    print_error "No MCU found!\n MCU either not connected or not detected!"
-    return
-  fi
-
-  top_border
-  echo -e "| Make sure, to select the correct MCU!                 |"
-  bottom_border
-  echo -e "${cyan}###### List of available MCU:${white}"
-
-  ### list all mcus
-  for mcu in "${mcu_list[@]}"; do
-    i=$(( i + 1 ))
-    mcu=$(echo "${mcu}" | rev | cut -d"/" -f1 | rev)
-    echo -e "${i}) MCU: ${cyan}${mcu}${white}"
-  done
-
-  ### verify user input
-  local regex="^[1-9]+$"
-  while [[ ! ${sel_index} =~ ${regex} ]] || [[ ${sel_index} -gt ${i} ]]; do
-    echo
-    read -p "${cyan}###### Select the ${mcu_type} MCU:${white} " sel_index
-
-    if [[ ! ${sel_index} =~ ${regex} ]]; then
-      error_msg "Invalid input!"
-    elif [[ ${sel_index} -lt 1 ]] || [[ ${sel_index} -gt ${i} ]]; then
-      error_msg "Please select a number between 1 and ${i}!"
-    fi
-
-    local mcu_index=$(( sel_index - 1 ))
-    selected_mcu_id="${mcu_list[${mcu_index}]}"
-  done
-
-  ### confirm selection
-  local yn
-  while true; do
-    echo -e "\n###### You selected:\n ● MCU #${sel_index}: ${selected_mcu_id}\n"
-    read -p "${cyan}###### Continue? (Y/n):${white} " yn
-    case "${yn}" in
-      Y|y|Yes|yes|"")
-        select_msg "Yes"
-
-        break;;
-      N|n|No|no)
-        select_msg "No"
-        break;;
-      *)
-        error_msg "Invalid command!";;
-    esac
-  done
 }
 
 

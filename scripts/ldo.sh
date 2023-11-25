@@ -5,7 +5,6 @@
 
 set -e
 
-INTERACTIVE=True
 ASK_TO_REBOOT=0
 
 if [ -e /boot/firmware/config.txt ] ; then
@@ -30,32 +29,6 @@ HOMEDIR="$(getent passwd "$USER" | cut -d: -f6)"
 
 FBRES="$(cat /sys/class/graphics/fb0/virtual_size | sed -r 's/,/:/')" # get current framebuffer resolution
 
-function calc_wt_size() {
-  # NOTE: it's tempting to redirect stderr to /dev/null, so supress error
-  # output from tput. However in this case, tput detects neither stdout or
-  # stderr is a tty and so only gives default 80, 24 values
-  WT_HEIGHT=18
-  WT_WIDTH=$(tput cols)
-
-  if [ -z "$WT_WIDTH" ] || [ "$WT_WIDTH" -lt 60 ]; then
-    WT_WIDTH=80
-  fi
-  if [ "$WT_WIDTH" -gt 178 ]; then
-    WT_WIDTH=120
-  fi
-  WT_MENU_HEIGHT=$((WT_HEIGHT - 7))
-}
-
-
-
-function get_boot_splash() {
-  if grep -q "splash" $CMDLINE ; then
-    echo 0
-  else
-    echo 1
-  fi
-}
-
 
 function get_splash_service() {
   if systemctl status splash.service  | grep -q -w loaded; then
@@ -66,24 +39,16 @@ function get_splash_service() {
 }
 
 function do_boot_splash() {
-  DEFAULT=--defaultno
-  if [ $(get_boot_splash) -eq 0 ]; then
-    DEFAULT=
-  fi
+  local option=$1 
   local mplayer="false"
-  if whiptail --yesno "Would you like to show the splash screen at boot?" $DEFAULT 20 60 2 ; then
-    RET=$?
-  else
-    RET=$?
-  fi
+
   ### check system for installed mplayer
   if dpkg -s mplayer 2>/dev/null | grep -q "Status: install ok installed"; then
     mplayer="true"
     else
     mplayer="false"
   fi
-
-  if [ $RET -eq 0 ]; then
+  if [[ ${option} -eq 1 ]]; then
 
     if [ ${mplayer} == "false" ]; then
       sudo apt-get install mplayer -y
@@ -101,8 +66,8 @@ function do_boot_splash() {
       sudo sed -i /etc/systemd/system/splash.service -e "/^\[Service\]/a ExecStart=/usr/bin/mplayer -vf scale=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldo.mp4 &> /dev/null"
       sudo systemctl enable splash.service
     fi
-    STATUS=enabled
-  elif [ $RET -eq 1 ]; then
+    STATUS=installed
+  elif [[ ${option} -eq 2 ]]; then
     if [ ${mplayer} == "true" ]; then
       sudo apt-get remove mplayer -y
       ok_msg "mplayer removed!"
@@ -129,9 +94,9 @@ function do_boot_splash() {
       sudo systemctl disable splash.service 
       sudo rm /etc/systemd/system/splash.service
     fi
-    STATUS=disabled
+    STATUS=removed
   else
-    return $RET
+    return $option
   fi
 
   if [ -e /boot/firmware/config.txt ] ; then
@@ -140,43 +105,38 @@ function do_boot_splash() {
     sudo ln -s /boot/firmware/cmdline.txt /boot/cmdline.txt
     sudo ln -s /boot/firmware/config.txt /boot/config.txt
   fi
-
-    whiptail --msgbox "Splash screen at boot is $STATUS" 20 60 1
+    ok_msg "Splash screen ${STATUS}!"
 }
 
-function install_35dpi_lcd() {
-  DEFAULT=--defaultyes
-    if whiptail --yesno "Would you like to install the 3.5 DPI LCD screen?" $DEFAULT 20 60 2 ; then
-    RET=$?
-  else
-    RET=$?
-  fi
+function do_35dpi_lcd() {
+  local option=$1 
 
-  if [ $RET -eq 0 ]; then
+  if [[ ${option} -eq 1 ]]; then
     sudo cp $HOMEDIR/LDOInstaller/configs/ldo_35dpi_3b4b.dtbo /boot/overlays/ldo_35dpi_3b4b.dtbo
     sudo cp $HOMEDIR/LDOInstaller/configs/ldo_35dpi_3b.dtbo /boot/overlays/ldo_35dpi_3b.dtbo
     sudo cp $HOMEDIR/LDOInstaller/configs/ldo_35dpi_4b.dtbo /boot/overlays/ldo_35dpi_4b.dtbo
     if ! grep -q "dtoverlay=ldo_35dpi_4b.dtbo" $CONFIG ; then
-      sudo sed -i $CONFIG -e "/^\[all\]/a gpio=0-9=a2"
-      sudo sed -i $CONFIG -e "/^\[all\]/a gpio=12-17=a2"
-      sudo sed -i $CONFIG -e "/^\[all\]/a gpio=20-25=a2"
-      sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=dpi18"
-      sudo sed -i $CONFIG -e "/^\[all\]/a enable_dpi_lcd=1"
-      sudo sed -i $CONFIG -e "/^\[all\]/a display_default_lcd=1"
-      sudo sed -i $CONFIG -e "/^\[all\]/a extra_transpose_buffer=2"
-      sudo sed -i $CONFIG -e "/^\[all\]/a dpi_group=2"
-      sudo sed -i $CONFIG -e "/^\[all\]/a dpi_mode=87"
-      sudo sed -i $CONFIG -e "/^\[all\]/a dpi_output_format=0x6f006"
-      sudo sed -i $CONFIG -e "/^\[all\]/a hdmi_timings=640 0 20 10 10 480 0 10 5 5 0 0 0 60 0 60000000 1"
-      sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=ldo_35dpi_3b4b.dtbo"
-      sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=ldo_35dpi_3b.dtbo"
+      if ! grep -q "display_lcd_rotate=2" $CONFIG ; then
+        sudo sed -i $CONFIG -e "/^\[all\]/a display_lcd_rotate=2"
+      fi
       sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=ldo_35dpi_4b.dtbo"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=ldo_35dpi_3b.dtbo"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=ldo_35dpi_3b4b.dtbo"
+      sudo sed -i $CONFIG -e "/^\[all\]/a hdmi_timings=640 0 20 10 10 480 0 10 5 5 0 0 0 60 0 60000000 1"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dpi_output_format=0x6f006"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dpi_mode=87"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dpi_group=2"
+      sudo sed -i $CONFIG -e "/^\[all\]/a extra_transpose_buffer=2"
+      sudo sed -i $CONFIG -e "/^\[all\]/a display_default_lcd=1"
+      sudo sed -i $CONFIG -e "/^\[all\]/a enable_dpi_lcd=1"
+      sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=dpi18"
+      sudo sed -i $CONFIG -e "/^\[all\]/a gpio=20-25=a2"
+      sudo sed -i $CONFIG -e "/^\[all\]/a gpio=12-17=a2"
+      sudo sed -i $CONFIG -e "/^\[all\]/a gpio=0-9=a2"
     fi
-    if ! grep -q "display_lcd_rotate=2" $CONFIG ; then
-      sudo sed -i $CONFIG -e "/^\[all\]/a display_lcd_rotate=2"
-    fi
+
     STATUS=installed
-  elif [ $RET -eq 1 ]; then 
+  elif [[ ${option} -eq 2 ]]; then
     if grep -q "dtoverlay=ldo_35dpi_4b.dtbo" $CONFIG ; then
       sudo sed -i $CONFIG -z -e "s/gpio=0-9=a2\n//"
       sudo sed -i $CONFIG -z -e "s/gpio=12-17=a2\n//"
@@ -194,32 +154,25 @@ function install_35dpi_lcd() {
       sudo sed -i $CONFIG -z -e "s/dtoverlay=ldo_35dpi_4b.dtbo\n//"
       sudo sed -i $CONFIG -z -e "s/display_lcd_rotate=2\n//"
     fi  
-    STATUS=uninstalled
+    STATUS=removed
   else
-    return $RET
+    return $option
   fi
-    whiptail --msgbox "3.5 DPI LCD screen is $STATUS" 20 60 1
+    ok_msg "3.5 Screen Driver ${STATUS}!"
 
 }
 
-function rotatescreen() {
+function do_43rotatescreen() {
+  local option=$1 
 
-  DEFAULT=--defaultno
-
-  if whiptail --yesno "Would you like to rotate the screen?" $DEFAULT 20 60 2 ; then
-    RET=$?
-  else
-    RET=$?
-  fi
-
-  if [ $RET -eq 0 ]; then
+  if [[ ${option} -eq 1 ]]; then
     if ! grep -q "display_lcd_rotate=2" $CONFIG ; then
       sudo sed -i $CONFIG -e "s/dtoverlay=vc4-/#dtoverlay=vc4-/"
       sudo sed -i $CONFIG -e "/^\[all\]/a display_lcd_rotate=2"
       sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=rpi-ft5406,touchscreen-inverted-x=1,touchscreen-inverted-y=1"
     fi
     STATUS=enabled
-  elif [ $RET -eq 1 ]; then 
+  elif [[ ${option} -eq 2 ]]; then
     if grep -q "display_lcd_rotate=2" $CONFIG ; then
       sudo sed -i $CONFIG -e "s/#dtoverlay=vc4-/dtoverlay=vc4-/"
       sudo sed -i $CONFIG -z -e "s/display_lcd_rotate=2\n//"
@@ -229,7 +182,7 @@ function rotatescreen() {
   else
     return $RET
   fi
-    whiptail --msgbox "Screen rotation is $STATUS" 20 60 1
+    ok_msg "4.3 Screen Rotation ${STATUS}!"
 }
 
 
@@ -258,7 +211,6 @@ function get_mcus() {
 
   for mcu in ${mcus}; do
     mcu_list+=("${mcu}")
-    echo "${mcu}"
   done
   
 }
