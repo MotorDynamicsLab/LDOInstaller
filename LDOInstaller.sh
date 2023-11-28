@@ -3,10 +3,10 @@
 #=======================================================================#
 # Copyright (C) 2023 - 2023 LDO Motors                                  #
 #                                                                       #
-# This file is part of LDO Setup                                        #
-# https://github.com/MotorDynamicsLab/LDOSetup.git                      # 
+# This file is part of LDO Installer                                    #
+# https://github.com/MotorDynamicsLab/LDOInstaller.git                  # 
 #                                                                       #
-# Which calls scripts from through symlinks                             #
+# This script utilizes scripts from                                     #
 # KIAUH - Klipper Installation And Update Helper                        #
 # https://github.com/dw-0/kiauh                                         #
 #                                                                       #

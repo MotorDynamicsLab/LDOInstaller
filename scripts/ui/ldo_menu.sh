@@ -6,7 +6,7 @@
 # This file is part of LDO Installer                                    #
 # https://github.com/MotorDynamicsLab/LDOInstaller.git                  # 
 #                                                                       #
-# Which calls scripts from through symlinks                             #
+# This script utilizes scripts from                                     #
 # KIAUH - Klipper Installation And Update Helper                        #
 # https://github.com/dw-0/kiauh                                         #
 #                                                                       #
@@ -276,7 +276,7 @@ function ldopv_ui() {
   echo -e "|  2) [Remmove]                                         |"
   echo -e "|                                                       |"
   echo -e "|  Configure Klipper:                                   |"
-  echo -e "|  2) [Rev A]                                           |"
+  echo -e "|  3) [V3 Rev A]                                        |"
   echo -e "|                                                       |"
   back_footer
   local action

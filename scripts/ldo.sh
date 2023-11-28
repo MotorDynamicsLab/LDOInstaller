@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
-# Part of raspi-config https://github.com/RPi-Distro/raspi-config
-#
-# See LICENSE file for copyright and license details
+
+#=======================================================================#
+# Copyright (C) 2023 - 2023 LDO Motors                                  #
+#                                                                       #
+# This file is part of LDO Installer                                    #
+# https://github.com/MotorDynamicsLab/LDOInstaller.git                  # 
+#                                                                       #
+# This script utilizes scripts from                                     #
+# KIAUH - Klipper Installation And Update Helper                        #
+# https://github.com/dw-0/kiauh                                         #
+#                                                                       #
+# This file may be distributed under the terms of the GNU GPLv3 license #
+#=======================================================================#
 
 set -e
 
