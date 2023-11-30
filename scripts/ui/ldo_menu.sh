@@ -273,7 +273,7 @@ function ldopv_ui() {
   echo -e "|-------------------------------------------------------|"
   echo -e "|  3.5 Display Driver:                                  |"
   echo -e "|  1) [Install]                                         |"
-  echo -e "|  2) [Remmove]                                         |"
+  echo -e "|  2) [Remove]                                          |"
   echo -e "|                                                       |"
   echo -e "|  Configure Klipper:                                   |"
   echo -e "|  3) [V3 Rev A]                                        |"
