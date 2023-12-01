@@ -9,4 +9,4 @@ StandardInput=tty
 StandardOutput=tty
 
 [Install]
-WantedBy=boot-firmware.mount
+WantedBy=sysinit.target

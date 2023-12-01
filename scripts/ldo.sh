@@ -64,7 +64,7 @@ function do_boot_splash() {
       sudo apt-get install mplayer -y
       ok_msg "mplayer installed!"
     fi
-    if ! grep -q "splash" $CMDLINE ; then
+    if ! grep -q "consoleblank=1" $CMDLINE ; then
       sudo sed -i $CMDLINE -e "s/$/ consoleblank=1 logo.nologo quiet loglevel=0 plymouth.enable=0 vt.global_cursor_default=0 plymouth.ignore-serial-consoles splash fastboot noatime nodiratime noram/"
     fi
     #set_config_var disable_splash 1 $CONFIG
@@ -73,7 +73,7 @@ function do_boot_splash() {
     fi
     if [ $(get_splash_service) -eq 1 ]; then
       sudo cp $HOMEDIR/LDOInstaller/splash/splash.service /etc/systemd/system/splash.service
-      sudo sed -i /etc/systemd/system/splash.service -e "/^\[Service\]/a ExecStart=/usr/bin/mplayer -vf scale=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldo.mp4 &> /dev/null"
+      sudo sed -i /etc/systemd/system/splash.service -e "/^\[Service\]/a ExecStart=/usr/bin/mplayer -vf crop=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldo.mp4 &> /dev/null"
       sudo systemctl enable splash.service
     fi
     STATUS=installed
@@ -127,6 +127,7 @@ function do_35dpi_lcd() {
     sudo cp $HOMEDIR/LDOInstaller/configs/ldo_35dpi_4b.dtbo /boot/overlays/ldo_35dpi_4b.dtbo
     if ! grep -q "dtoverlay=ldo_35dpi_4b.dtbo" $CONFIG ; then
       if ! grep -q "display_lcd_rotate=2" $CONFIG ; then
+        sudo sed -i $CONFIG -e "s/dtoverlay=vc4-/#dtoverlay=vc4-/"
         sudo sed -i $CONFIG -e "/^\[all\]/a display_lcd_rotate=2"
       fi
       sudo sed -i $CONFIG -e "/^\[all\]/a dtoverlay=ldo_35dpi_4b.dtbo"
