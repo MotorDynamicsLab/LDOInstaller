@@ -86,10 +86,13 @@ function do_boot_splash() {
         else
           sudo cp $HOMEDIR/LDOInstaller/splash/splash.service /etc/systemd/system/splash.service
           sudo sed -i /etc/systemd/system/splash.service -e "/^\[Service\]/a ExecStart=/usr/bin/mplayer -vf crop=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldo.mp4 &> /dev/null"
-        if [ $(get_splash_service) -eq 1 ]; then
-          pause 1
+          sudo systemctl daemon-reload
           sudo systemctl enable splash.service
-        fi
+          if sudo systemctl start splash.service; then
+              ok_msg "Spash service started!"
+            else
+              status_msg "Splash service failed to start!"
+            fi        
         STATUS=installed
     fi
   elif [[ ${option} -eq 2 ]]; then
@@ -116,8 +119,11 @@ function do_boot_splash() {
       sudo sed -i $CONFIG -z -e "s/disable_splash=1\n//"
     fi
     if [ $(get_splash_service) -eq 0 ]; then
+      sudo systemctl stop splash.service
       sudo systemctl disable splash.service 
       sudo rm /etc/systemd/system/splash.service
+      sudo systemctl daemon-reload
+      sudo systemctl reset-failed
     fi
     STATUS=removed
   else
