@@ -41,6 +41,7 @@ FBRES="$(cat /sys/class/graphics/fb0/virtual_size | sed -r 's/,/:/')" # get curr
 
 
 function get_splash_service() {
+  sudo systemctl daemon-reload
   if systemctl status splash.service  | grep -q -w loaded; then
     echo 0
   else
@@ -58,6 +59,14 @@ function do_boot_splash() {
     else
     mplayer="false"
   fi
+
+  echo $FBRES
+  ### check for screen  
+  if [ -z "$FBRES" ]; then
+      print_error "No screen detected"
+      exit 1
+  fi 
+
   if [[ ${option} -eq 1 ]]; then
 
     if [ ${mplayer} == "false" ]; then
@@ -71,12 +80,18 @@ function do_boot_splash() {
     if ! grep -q "disable_splash=1" $CONFIG ; then
       sudo sed -i $CONFIG -e "/^\[all\]/a disable_splash=1"
     fi
-    if [ $(get_splash_service) -eq 1 ]; then
-      sudo cp $HOMEDIR/LDOInstaller/splash/splash.service /etc/systemd/system/splash.service
-      sudo sed -i /etc/systemd/system/splash.service -e "/^\[Service\]/a ExecStart=/usr/bin/mplayer -vf crop=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldo.mp4 &> /dev/null"
-      sudo systemctl enable splash.service
+    if ! sudo cp "${HOME}/LDOInstaller/splash/splash.service" "/etc/systemd/system/splash.service"; then
+          error_msg "Creating /etc/systemd/system/splash.service failed! Aborting installation ..."
+          return
+        else
+          sudo cp $HOMEDIR/LDOInstaller/splash/splash.service /etc/systemd/system/splash.service
+          sudo sed -i /etc/systemd/system/splash.service -e "/^\[Service\]/a ExecStart=/usr/bin/mplayer -vf crop=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldo.mp4 &> /dev/null"
+        if [ $(get_splash_service) -eq 1 ]; then
+          pause 1
+          sudo systemctl enable splash.service
+        fi
+        STATUS=installed
     fi
-    STATUS=installed
   elif [[ ${option} -eq 2 ]]; then
     if [ ${mplayer} == "true" ]; then
       sudo apt-get remove mplayer -y
