@@ -118,7 +118,7 @@ function do_boot_splash() {
     if grep -q "disable_splash=1" $CONFIG ; then
       sudo sed -i $CONFIG -z -e "s/disable_splash=1\n//"
     fi
-    if [ $(get_splash_service) -eq 0 ]; then
+    if [[ -e "${SYSTEMD}/splash.service" ]]; then
       sudo systemctl stop splash.service
       sudo systemctl disable splash.service 
       sudo rm /etc/systemd/system/splash.service
