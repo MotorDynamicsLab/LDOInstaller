@@ -312,7 +312,8 @@ function ldosplash_ui() {
   echo -e "|-------------------------------------------------------|"
   echo -e "|                                                       |"
   echo -e "|  1) [Install]                                         |"
-  echo -e "|  2) [Remove]                                          |"
+  echo -e "|  2) [Install Charlie]                                 |"
+  echo -e "|  3) [Remove]                                          |"
   echo -e "|                                                       |"
   back_footer
 
@@ -325,8 +326,12 @@ function ldosplash_ui() {
         do_boot_splash 1
         ldo_menu;;
       2)
-        select_msg "Remove Splash Screen"
+        select_msg "Install Charlie Splash Screen"
         do_boot_splash 2
+        ldo_menu;;
+      3)
+        select_msg "Remove Splash Screen"
+        do_boot_splash 3
         ldo_menu;;
       B|b)
         clear; ldo_menu; break;;

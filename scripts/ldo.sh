@@ -40,15 +40,6 @@ HOMEDIR="$(getent passwd "$USER" | cut -d: -f6)"
 FBRES="$(cat /sys/class/graphics/fb0/virtual_size | sed -r 's/,/:/')" # get current framebuffer resolution
 
 
-function get_splash_service() {
-  sudo systemctl daemon-reload
-  if systemctl status splash.service  | grep -q -w loaded; then
-    echo 0
-  else
-    echo 1
-  fi
-}
-
 function do_boot_splash() {
   local option=$1 
   local mplayer="false"
@@ -67,7 +58,7 @@ function do_boot_splash() {
       exit 1
   fi 
 
-  if [[ ${option} -eq 1 ]]; then
+  if [[ ${option} -eq 1 ]] || [[ ${option} -eq 2 ]]; then
 
     if [ ${mplayer} == "false" ]; then
       sudo apt-get install mplayer -y
@@ -85,7 +76,11 @@ function do_boot_splash() {
           return
         else
           sudo cp $HOMEDIR/LDOInstaller/splash/splash.service /etc/systemd/system/splash.service
-          sudo sed -i /etc/systemd/system/splash.service -e "/^\[Service\]/a ExecStart=/usr/bin/mplayer -vf crop=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldo.mp4 &> /dev/null"
+          if [[ ${option} -eq 1 ]]; then
+            sudo sed -i /etc/systemd/system/splash.service -e "/^\[Service\]/a ExecStart=/usr/bin/mplayer -vf crop=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldo.mp4 &> /dev/null"
+            else
+            sudo sed -i /etc/systemd/system/splash.service -e "/^\[Service\]/a ExecStart=/usr/bin/mplayer -vf crop=${FBRES} -vo fbdev2 ${HOMEDIR}/LDOInstaller/splash/ldo_charlie.mp4 &> /dev/null"
+          fi
           sudo systemctl daemon-reload
           sudo systemctl enable splash.service
           if sudo systemctl start splash.service; then
@@ -95,7 +90,7 @@ function do_boot_splash() {
             fi        
         STATUS=installed
     fi
-  elif [[ ${option} -eq 2 ]]; then
+  elif [[ ${option} -eq 3 ]]; then
     if [ ${mplayer} == "true" ]; then
       sudo apt-get remove mplayer -y
       ok_msg "mplayer removed!"
