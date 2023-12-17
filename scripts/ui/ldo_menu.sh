@@ -252,7 +252,7 @@ function ldovt_ui() {
   done
 }
 
-function ldovsw_ui() {
+function ldosw_ui() {
   top_border
   echo -e "|  ${yellow}~~~~~~~~~~~~~ [ LDO Switchwire Menu ] ~~~~~~~~~~~~~${white}   |"
   hr
@@ -260,9 +260,23 @@ function ldovsw_ui() {
   echo -e "|-------------------------------------------------------|"
   echo -e "|  Configure Klipper:                                   |"
   echo -e "|  1) [250mm]                                           |"
-  echo -e "|  2) [300mm]                                           |"
   echo -e "|                                                       |"
   back_footer
+
+  local action
+  while true; do
+    read -p "${cyan}###### Perform action:${white} " action
+    case "${action}" in
+      1) 
+        select_msg "Rev C 250mm"
+        ldoinstaller "VS0" "C0" "00" 250 250 200
+        ldo_menu;;
+      B|b)
+        clear; ldo_menu; break;;
+      *)
+        error_msg "Invalid command!";;
+    esac
+  done
 }
 
 function ldopv_ui() {
